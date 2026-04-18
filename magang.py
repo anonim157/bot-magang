@@ -8,102 +8,100 @@ import random
 BOT_TOKEN = "8621758636:AAE_a_ZSCMFkUj4jtbkYmrmyX5ZaeV01zrc"
 CHAT_ID = "5492251531"
 
-POSISI_MAGANG = ["Magang Engineer", "Magang Teknik Elektro", "Internship Automation"]
+# Kata kunci yang lebih spesifik untuk Automation Engineer Undip/Semarang style
+POSISI_MAGANG = ["Magang Automation Engineer", "Magang Electrical Engineer", "Internship Engineering"]
 # ========================================================
 
 def cari_magang_duckduckgo(kata_kunci):
-    # Menggunakan Mesin Pencari DuckDuckGo yang jauh lebih ramah bot
+    # Filter pencarian lebih tajam
     query = f'{kata_kunci} (site:linkedin.com/jobs OR site:glints.com/id OR site:instagram.com)'
     url = "https://html.duckduckgo.com/html/"
     
+    # Gunakan User-Agent yang lebih modern
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Referer": "https://duckduckgo.com/"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        "Referer": "https://duckduckgo.com/",
+        "Origin": "https://duckduckgo.com"
     }
     
     try:
-        # DuckDuckGo HTML version menggunakan POST request
-        response = requests.post(url, data={'q': query}, headers=headers)
+        # Kirim request dengan timeout agar tidak gantung
+        response = requests.post(url, data={'q': query}, headers=headers, timeout=15)
         soup = BeautifulSoup(response.text, 'html.parser')
         
         hasil = []
-        semua_link = soup.find_all('a', href=True)
+        # DuckDuckGo HTML menyimpan hasil dalam div class 'result'
+        blocks = soup.find_all('div', class_='result')
         
-        # Debugging untuk melihat apakah DDG merespons dengan baik
-        print(f"   [Debug] Mesin pencari memberikan {len(semua_link)} mentahan link.")
+        print(f"   [Debug] Menemukan {len(blocks)} blok hasil pencarian.")
 
-        for a in semua_link:
-            link = a['href']
+        for block in blocks:
+            tag_a = block.find('a', class_='result__a', href=True)
+            if not tag_a:
+                continue
+
+            link = tag_a['href']
             
-            # Membersihkan format link redirect dari DuckDuckGo
+            # Bersihkan Redirect DuckDuckGo
             if "uddg=" in link:
                 link = link.split("uddg=")[1].split("&")[0]
                 link = urllib.parse.unquote(link)
             
-            # Filter hanya link target
-            if "linkedin.com/jobs" in link or "glints.com/id" in link or "instagram.com" in link:
+            # Filter Target
+            if any(site in link for site in ["linkedin.com/jobs", "glints.com", "instagram.com"]):
+                judul = tag_a.get_text().strip()
                 
-                # Mengambil judul. Pada DDG, judul biasanya ada di class result__snippet atau teks link itu sendiri
-                judul = a.text.strip()
+                # Filter sampah navigasi
+                kata_sampah = ["Login", "Sign in", "Instagram", "LinkedIn", "Masuk"]
+                if any(s.lower() in judul.lower() for s in kata_sampah):
+                    continue
                 
-                # Jika judul dari link kosong, cari teks dari elemen pembungkusnya
-                if not judul or len(judul) < 10:
-                    parent = a.find_parent('div')
-                    if parent:
-                        judul = parent.text.strip()
-
-                judul = " ".join(judul.split())
-                
-                # Menyingkirkan kata-kata navigasi
-                kata_sampah = ["Login", "Sign in", "Instagram", "LinkedIn", "Masuk", "Lupa Kata Sandi"]
-                is_sampah = any(sampah.lower() == judul.lower() for sampah in kata_sampah)
-                
-                if len(judul) > 10 and not any(link in h for h in hasil) and not is_sampah:
-                    if "instagram.com" in link:
-                        ikon = "📸"
-                        sumber = "[Instagram]"
-                    else:
-                        ikon = "📌"
-                        sumber = "[Job Portal]"
-                        
-                    hasil.append(f"{ikon} {sumber} {judul}\n🔗 {link}")
+                if len(judul) > 10:
+                    ikon = "📸" if "instagram.com" in link else "📌"
+                    sumber = "[Instagram]" if "instagram.com" in link else "[Job Portal]"
                     
-                    if len(hasil) >= 4: 
+                    data_teks = f"{ikon} {sumber} {judul}\n🔗 {link}"
+                    
+                    if data_teks not in hasil:
+                        hasil.append(data_teks)
+                    
+                    if len(hasil) >= 3: # Ambil 3 terbaik saja per posisi
                         break
                         
-        return "\n\n".join(hasil) if hasil else "🔍 Tidak menemukan struktur link magang hari ini."
+        return "\n\n".join(hasil) if hasil else "🔍 Belum ada info baru di sumber ini."
     except Exception as e:
-        return f"Gagal mengambil data: {e}"
+        return f"⚠️ Gangguan koneksi: {str(e)[:50]}"
 
 def kirim_telegram(pesan):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHAT_ID,
         "text": pesan,
-        "disable_web_page_preview": True 
+        "disable_web_page_preview": True,
+        "parse_mode": "Markdown" # Agar teks *bold* berfungsi
     }
     
     try:
         response = requests.post(url, data=payload)
         if response.status_code == 200:
-            print("✅ Sukses! Notifikasi Telegram berhasil dikirim.")
+            print("✅ Notifikasi terkirim ke Telegram.")
         else:
-            print(f"❌ Gagal mengirim pesan. Error: {response.text}")
+            print(f"❌ Telegram Error: {response.status_code}")
     except Exception as e:
-        print(f"⚠️ Terjadi kesalahan koneksi saat mengirim ke Telegram: {e}")
+        print(f"⚠️ Gagal kirim: {e}")
 
 if __name__ == "__main__":
-    print("Memulai program pencarian magang dengan DuckDuckGo...")
+    print("🤖 Bot Magang Dicky sedang bekerja...")
     pesan_akhir = "🚀 *UPDATE INFO MAGANG HARI INI* 🚀\n\n"
     
     for posisi in POSISI_MAGANG:
-        print(f"Menganalisis data untuk: {posisi}...")
+        print(f"Mencari: {posisi}...")
         data = cari_magang_duckduckgo(posisi)
         pesan_akhir += f"=== *{posisi}* ===\n{data}\n\n"
-        time.sleep(random.randint(3, 5)) 
+        # Delay acak agar tidak dicurigai sebagai bot jahat
+        time.sleep(random.randint(4, 7)) 
         
     pesan_akhir += "#IIZZZINNNNNNN🤖"
     
-    print("Mempersiapkan pengiriman ke HP kamu...")
     kirim_telegram(pesan_akhir)
-    print("Program selesai dieksekusi!")
+    print("✨ Selesai!")
