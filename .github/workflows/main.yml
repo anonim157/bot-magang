@@ -1,0 +1,25 @@
+name: Jalankan Bot Magang Harian
+
+on:
+  schedule:
+    # Jalan otomatis setiap jam 08:00 WIB (01:00 UTC)
+    - cron: '0 1 * * *'
+  workflow_dispatch: # Tombol rahasia untuk jalankan manual kapan saja
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Running Script
+        run: python magang.py
