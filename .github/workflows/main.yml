@@ -3,7 +3,7 @@ name: Jalankan Bot Magang Harian
 on:
   schedule:
     # Jalan otomatis setiap jam 08:00 WIB (01:00 UTC)
-    - cron: '0 1 * * *'
+    - cron: '0 14 * * *'
   workflow_dispatch: # Tombol rahasia untuk jalankan manual kapan saja
 
 jobs:
