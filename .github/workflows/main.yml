@@ -2,19 +2,18 @@ name: Jalankan Bot Magang Harian
 
 on:
   schedule:
-    # Jalan otomatis setiap jam 08:00 WIB (01:00 UTC)
-    - cron: '0 14 * * *'
-  workflow_dispatch: # Tombol rahasia untuk jalankan manual kapan saja
+    - cron: '30 14 * * *' # Jam 21:30 WIB
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout kode
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # Update ke v4 (Node 20+)
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # Update ke v5 (Node 20+)
         with:
           python-version: '3.9'
 
