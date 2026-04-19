@@ -2,7 +2,9 @@ name: 🤖 Bot Magang Harian
 
 on:
   schedule:
-    - cron: '30 14 * * 1-5' # Jam 21:30 WIB, Senin–Jumat saja
+    - cron: '0 1 * * 1-5'  # Jam 08:00 WIB (UTC+7 → UTC 01:00), Senin–Jumat
+    - cron: '0 8 * * 1-5'  # Jam 15:00 WIB (UTC+7 → UTC 08:00), Senin–Jumat
+    - cron: '0 13 * * 1-5' # Jam 20:00 WIB (UTC+7 → UTC 13:00), Senin–Jumat
   workflow_dispatch:        # Tetap bisa dijalankan manual kapan saja
 
 concurrency:
