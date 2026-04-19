@@ -1,24 +1,58 @@
-name: Jalankan Bot Magang Harian
+name: 🤖 Bot Magang Harian
 
 on:
   schedule:
-    - cron: '30 14 * * *' # Jam 21:30 WIB
-  workflow_dispatch:
+    - cron: '30 14 * * 1-5' # Jam 21:30 WIB, Senin–Jumat saja
+  workflow_dispatch:        # Tetap bisa dijalankan manual kapan saja
+
+concurrency:
+  group: bot-magang
+  cancel-in-progress: true  # Hindari jalan ganda jika trigger dobel
 
 jobs:
-  build:
+  jalankan-bot:
+    name: Cari & Kirim Info Magang
     runs-on: ubuntu-latest
+    timeout-minutes: 10     # Paksa berhenti jika hang (hemat menit Actions)
+
     steps:
-      - name: Checkout kode
-        uses: actions/checkout@v4 # Update ke v4 (Node 20+)
+      - name: 📥 Checkout kode
+        uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5 # Update ke v5 (Node 20+)
+      - name: 🐍 Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.11'
+          cache: 'pip'          # Cache dependensi agar install lebih cepat
 
-      - name: Install Dependencies
-        run: pip install requests beautifulsoup4
+      - name: 📦 Install dependensi
+        run: pip install --quiet requests beautifulsoup4
 
-      - name: Running Script
-        run: python magang.py
+      # Ambil riwayat dari cache antar-run agar anti-duplikat tetap bekerja
+      - name: 💾 Restore cache riwayat
+        uses: actions/cache@v4
+        with:
+          path: riwayat_lowongan.json
+          key: riwayat-${{ runner.os }}
+
+      - name: 🤖 Jalankan bot magang
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID:   ${{ secrets.CHAT_ID }}
+        run: python bot_magang_dicky.py
+
+      # Simpan kembali riwayat agar tersedia di run berikutnya
+      - name: 💾 Simpan cache riwayat
+        if: always()           # Simpan meski script error sekalipun
+        uses: actions/cache@v4
+        with:
+          path: riwayat_lowongan.json
+          key: riwayat-${{ runner.os }}
+
+      - name: 📋 Upload log sebagai artefak
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: log-bot-${{ github.run_number }}
+          path: bot_magang.log
+          retention-days: 7    # Log dihapus otomatis setelah seminggu
